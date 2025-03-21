@@ -4,4 +4,5 @@ from .models import Reminder
 class ReminderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reminder
-        fields = '__all__'  # Or specify required fields like ['id', 'title', 'date']
+        fields = ['id', 'title', 'description', 'due_time', 'priority', 'category', 'completed', 'recurring', 'created_at']
+        read_only_fields = ['id', 'created_at', 'user']  # ✅ Ensure 'user' is read-only
