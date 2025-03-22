@@ -12,7 +12,33 @@ from .services import get_reminder_summary
 from .services import get_due_soon_reminders
 from reminders.models import Reminder
 from rest_framework.decorators import api_view, permission_classes
+from django.utils import timezone
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def completed_today(request):
+    user = request.user
+    today = timezone.now().date()
+    reminders = Reminder.objects.filter(user=user, completed=True, due_time__date=today)
+    serializer = ReminderSerializer(reminders, many=True)
+    return Response({'count': reminders.count(), 'reminders': serializer.data})
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def completed_summary(request):
+    user = request.user
+    today = now().date()
+    one_week_ago = today - timedelta(days=6)
+
+    summary = {}
+    for i in range(7):
+        day = one_week_ago + timedelta(days=i)
+        count = Reminder.objects.filter(user=user, completed=True, due_time__date=day).count()
+        summary[str(day)] = count
+
+    return Response({"weekly_completed_summary": summary})
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
@@ -78,6 +104,19 @@ class ReminderViewSet(viewsets.ModelViewSet):
         reminders = get_upcoming_reminders(request.user)
         return Response(ReminderSerializer(reminders, many=True).data)
 
+    @action(detail=True, methods=['put', 'patch'], url_path='set_priority')
+    def set_priority(self, request, pk=None):
+        reminder = self.get_object()
+        priority = request.data.get('priority')
+
+        if priority not in ['high', 'medium', 'low']:
+            return Response({'error': 'Invalid priority. Use high, medium, or low.'}, status=400)
+
+        reminder.priority = priority
+        reminder.save()
+        return Response({'message': f"Priority updated to '{priority}'."}, status=200)
+
+
     @action(detail=True, methods=['post'])
     def complete_task(self, request, pk=None):
         reminder = self.get_object()
@@ -107,4 +146,6 @@ class ReminderViewSet(viewsets.ModelViewSet):
             "count": len(reminders),
             "reminders": serializer.data
         })
+
+
 
